@@ -1,0 +1,53 @@
+
+name: Backfill BTC 5m Discovery
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_index:
+        description: "Month index start, 0-based"
+        required: false
+        default: "0"
+      end_index:
+        description: "Month index end, exclusive; blank = all"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  backfill:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      QUANT_STORE_URI: ${{ secrets.QUANT_STORE_URI }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      AWS_ENDPOINT_URL: ${{ secrets.AWS_ENDPOINT_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install frozen research environment
+        run: |
+          python -m pip install --upgrade pip
+          pip install --pre -e .
+
+      - name: Offline protocol self-test
+        run: python -m quant_platform.ingest.stdlib_selftest
+
+      - name: Backfill Discovery
+        shell: bash
+        run: |
+          test -n "$QUANT_STORE_URI"
+          ARGS=(--store-uri "$QUANT_STORE_URI")
+          ARGS+=(--start-index "${{ inputs.start_index }}")
+          if [[ -n "${{ inputs.end_index }}" ]]; then
+            ARGS+=(--end-index "${{ inputs.end_index }}")
+          fi
+          python -m quant_platform.ingest.run_discovery_backfill "${ARGS[@]}"

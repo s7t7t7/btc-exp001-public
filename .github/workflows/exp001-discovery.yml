@@ -1,0 +1,37 @@
+name: Run EXP-001 Discovery
+on:
+  workflow_dispatch:
+    inputs:
+      bootstrap_reps:
+        description: "Block bootstrap repetitions"
+        required: false
+        default: "500"
+
+permissions:
+  contents: read
+
+jobs:
+  research:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      QUANT_STORE_URI: ${{ secrets.QUANT_STORE_URI }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      AWS_ENDPOINT_URL: ${{ secrets.AWS_ENDPOINT_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: |
+          pip install --pre -e .
+          python -m quant_platform.ingest.stdlib_selftest
+          python -m quant_platform.ingest.snapshot_stdlib_selftest
+      - name: Run frozen Discovery only
+        run: |
+          python -m quant_platform.research.exp001_remote \
+            --store-uri "$QUANT_STORE_URI" \
+            --bootstrap-reps "${{ inputs.bootstrap_reps }}"

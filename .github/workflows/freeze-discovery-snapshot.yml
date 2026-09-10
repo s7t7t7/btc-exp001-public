@@ -1,0 +1,28 @@
+name: Freeze BTC Discovery Snapshot
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  freeze:
+    runs-on: ubuntu-24.04
+    env:
+      QUANT_STORE_URI: ${{ secrets.QUANT_STORE_URI }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      AWS_ENDPOINT_URL: ${{ secrets.AWS_ENDPOINT_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: |
+          pip install --pre -e .
+          python -m quant_platform.ingest.stdlib_selftest
+          python -m quant_platform.ingest.snapshot_stdlib_selftest
+      - run: |
+          python -m quant_platform.ingest.freeze_discovery_snapshot \
+            --store-uri "$QUANT_STORE_URI"
